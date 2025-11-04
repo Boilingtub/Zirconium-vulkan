@@ -14,10 +14,26 @@
             .hash = "vulkan-0.0.0-r7Ytx6hBAwBUnt0XA-uOkR2hda4fAHFhQITNTgJpnFkY",
         },
 
+        .zmath = .{
+            .url = "https://github.com/zig-gamedev/zmath/archive/3a5955b2b72cd081563fbb084eff05bffd1e3fbb.tar.gz",
+            .hash = "zmath-0.11.0-dev-wjwivdMsAwD-xaLj76YHUq3t9JDH-X16xuMTmnDzqbu2",
+        },
         .zglfw = .{
-            .url = "git+https://github.com/zig-gamedev/zglfw.git#6034a5623312c58bf5e64c1a2b686691c28575f4",
+            .url = "https://github.com/zig-gamedev/zglfw/archive/6034a5623312c58bf5e64c1a2b686691c28575f4.tar.gz",
             .hash = "zglfw-0.10.0-dev-zgVDNPKyIQCBi-wv_vxkvIQq1u0bP4D56Wszx_2mszc7",
         },
+        .TrueType = .{
+            .url = "git+https://codeberg.org/andrewrk/TrueType.git#7543e2dca70267e8f09e37be00fbc0385138581d",
+            .hash = "TrueType-0.0.0-Ne-mWHIGAQBwHsiS9z_vbr1SkVZCkG01Vpzrs079dzIO",
+        },
+        .zgltf = .{
+            .url = "https://github.com/kooparse/zgltf/archive/ec52d477db346af99d4cdced4e35e67e1670023f.tar.gz",
+            .hash = "zgltf-0.1.0-sX6QAt0SAgDzMQCCG-N181hVbx8JnwFYZ3luQigQpVBM",
+        },
+        .zstbi = .{
+            .url = "https://github.com/zig-gamedev/zstbi/archive/2c4b3100ccb7aed90ecc9439030899764e2a8d47.tar.gz",
+            .hash = "zstbi-0.11.0-dev-L0Ea_yaWBwAHwFoCuyjkFyaiSsbjt4UOrkntR0c_nmzz",
+        }, 
     },
 
     .paths = .{
