@@ -42,6 +42,7 @@ pub fn main() !void {
     //populate State 
         
     //Input Loop
+    var frame_count: u32 = 0;
     while (!window.shouldClose() and window.getKey(.escape) != .press) {
         var w: c_int = undefined;
         var h: c_int = undefined;
@@ -50,6 +51,8 @@ pub fn main() !void {
             glfw.pollEvents();
             continue;
         }
+        std.debug.print("attempting fame render : {d}\n", .{frame_count});
+        frame_count += 1;
         try Zr.render(allocator, &state, w, h);
         //state.draw_render();
     }

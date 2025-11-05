@@ -150,6 +150,7 @@ pub const Swapchain = struct {
         const gctx = self.gctx;
         const allocator = self.allocator;
         const old_handle = self.handle;
+
         self.deinitExceptSwapchain();
         // set current handle to NULL_HANDLE to signal that the current
         // swapchain does no longer need to be de-initialized if we fail to
@@ -202,6 +203,7 @@ pub const Swapchain = struct {
         // Step 1: Make sure the current frame has finished rendering
         const current = self.currentSwapImage();
         try current.waitForFence(self.gctx);
+        
         try self.gctx.dev.resetFences(1, @ptrCast(&current.frame_fence));
 
         // Step 2: Submit the command buffer
@@ -221,6 +223,7 @@ pub const Swapchain = struct {
                 .p_signal_semaphores = @ptrCast(&current.render_finished),
             }
         }, current.frame_fence);
+        
 
         // Step 3: Present the current frame
         _ = try self.gctx.dev.queuePresentKHR(
@@ -298,7 +301,7 @@ const SwapImage = struct {
             null
         );
         errdefer gctx.dev.destroyFence(frame_fence, null);
-
+        //std.debug.print("SwapImage::init : frame_fence = {x}\n", .{frame_fence});
         return SwapImage{
             .image = image,
             .view = view,
@@ -309,7 +312,8 @@ const SwapImage = struct {
     }
 
     fn deinit(self: SwapImage, gctx: *const GraphicsContext) void {
-        self.waitForFence(gctx) catch return;
+        self.
+            waitForFence(gctx) catch return;
         gctx.dev.destroyImageView(self.view, null);
         gctx.dev.destroySemaphore(self.image_acquired, null);
         gctx.dev.destroySemaphore(self.render_finished, null);

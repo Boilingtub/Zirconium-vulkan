@@ -7,18 +7,18 @@ pub fn createPipeline(
     gc: *const GraphicsContext,
     layout: vk.PipelineLayout,
     render_pass: vk.RenderPass,
-    vert_spv: []const u8,
-    frag_spv: []const u8,
+    vert_spv: []const u32,
+    frag_spv: []const u32,
 ) !vk.Pipeline {
     const vert = try gc.dev.createShaderModule(&.{
-        .code_size = vert_spv.len,
-        .p_code = @ptrCast(&vert_spv),
+        .code_size = vert_spv.len*@alignOf(u32),
+        .p_code = vert_spv.ptr,
     }, null);
     defer gc.dev.destroyShaderModule(vert, null);
     
     const frag = try gc.dev.createShaderModule(&.{
-        .code_size = frag_spv.len,
-        .p_code = @ptrCast(&frag_spv),
+        .code_size = frag_spv.len*@alignOf(u32),
+        .p_code = frag_spv.ptr,
     }, null);
     defer gc.dev.destroyShaderModule(frag, null);
 

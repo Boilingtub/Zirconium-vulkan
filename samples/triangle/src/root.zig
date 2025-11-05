@@ -13,6 +13,7 @@ pub fn render(
     if(state.present_state == .suboptimal or
        state.extent.width != @as(u32,@intCast(w)) or
        state.extent.height != @as(u32,@intCast(h))) {
+
         state.extent.width = @as(u32,@intCast(w));
         state.extent.height = @as(u32,@intCast(h));
         try state.swapchain.recreate(state.extent);
@@ -35,6 +36,7 @@ pub fn render(
             state.framebuffers,
         );
     }
+    std.debug.print("cmdbuf = {d}\n", .{cmdbuf});
     state.present_state = state.swapchain.present(cmdbuf) catch |err| switch (err) {
         error.OutOfDateKHR => gpu.Swapchain.PresentState.suboptimal,
         else => |narrow| return narrow,

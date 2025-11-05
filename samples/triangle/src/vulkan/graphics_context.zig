@@ -239,8 +239,7 @@ pub const Queue = struct {
 fn createSurface(instance: Instance, window: *glfw.Window) !vk.SurfaceKHR {
     var surface: vk.SurfaceKHR = undefined;
     glfw.createWindowSurface(
-        @ptrFromInt(@intFromEnum(instance.handle)),
-        window, null, &surface
+        instance.handle, window, null, &surface
     ) catch |err| {
         std.log.err("Failed to create window surface: {}", .{err});
         return err;
