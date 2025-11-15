@@ -13,9 +13,7 @@ pub fn render(
     if((state.present_state == .suboptimal or
     state.extent.width != @as(u32,@intCast(w)) or
     state.extent.height != @as(u32,@intCast(h))) and window.needs_resize)  {
-        std.debug.print("🔄 Resizing from {}x{} to {}x{}\n",
-            .{state.extent.width, state.extent.height, w, h});
-        //try state.gctx.dev.deviceWaitIdle();
+        try state.gctx.dev.deviceWaitIdle();
 
         state.extent.width = @as(u32,@intCast(w));
         state.extent.height = @as(u32,@intCast(h));

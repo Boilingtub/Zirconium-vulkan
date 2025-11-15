@@ -160,9 +160,6 @@ pub const State = struct {
             .cmdbufs = cmdbufs,
             .present_state = present_state,
         };
-
-        //state.swapchain.gctx = &state.gctx;
-        //return state;
     }
 
     pub fn destroy_vulkan_state(self: *State, allocator: Allocator) void {
