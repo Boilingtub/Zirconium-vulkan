@@ -60,6 +60,7 @@ pub const Swapchain = struct {
                 .exclusive;
 
         const handle = gctx.dev.createSwapchainKHR(&.{
+            .s_type = .swapchain_create_info_khr,
             .surface = gctx.surface,
             .min_image_count = image_count,
             .image_format = surface_format.format,
@@ -95,7 +96,9 @@ pub const Swapchain = struct {
             allocator.free(swap_images);
         }
 
-        var next_image_acquired = try gctx.dev.createSemaphore(&.{}, null);
+        var next_image_acquired = try gctx.dev.createSemaphore(&.{
+            .s_type = .semaphore_create_info,
+        }, null);
         errdefer gctx.dev.destroySemaphore(next_image_acquired, null);
 
         const result = try gctx.dev.acquireNextImageKHR(
@@ -151,6 +154,7 @@ pub const Swapchain = struct {
         const allocator = self.allocator;
         const old_handle = self.handle;
 
+        //try self.gctx.dev.deviceWaitIdle();
         self.deinitExceptSwapchain();
         // set current handle to NULL_HANDLE to signal that the current
         // swapchain does no longer need to be de-initialized if we fail to
@@ -191,7 +195,8 @@ pub const Swapchain = struct {
         //                image is the last step, leaving the swapchain in a
         //                state with the current image.
         // 1) Wait for and reset fence of current image
-        // 2) Submit command buffer, signalling fence of current image and
+        // 2) Submit command buffer, signalling 
+        // .s_type = .semaphore_create_info,fence of current image and
         //    dependent on the semaphore signalled by step 4.
         // 3) Present current frame, dependent on semaphore signalled by the
         //    submit
@@ -270,24 +275,29 @@ const SwapImage = struct {
     fn init(gctx: *const GraphicsContext,
         image: vk.Image, 
         format: vk.Format) !SwapImage {
-        const view = try gctx.dev.createImageView(&.{
+        const imageview_createInfo = vk.ImageViewCreateInfo{
+            .s_type = .image_view_create_info,
             .image = image,
             .view_type = .@"2d",
             .format = format,
-            .components = .{ 
+            .components = .{
                 .r = .identity,
                 .g = .identity,
                 .b = .identity,
-                .a = .identity
+                .a = .identity,
             },
             .subresource_range = .{
-                .aspect_mask = .{ .color_bit = true },
+                .aspect_mask = .{.color_bit = true},
                 .base_mip_level = 0,
                 .level_count = 1,
                 .base_array_layer = 0,
                 .layer_count = 1,
             },
-        }, null);
+        };
+        const view = try gctx.dev.createImageView(
+            &imageview_createInfo,
+            null
+        );
         errdefer gctx.dev.destroyImageView(view, null);
 
         const image_acquired = try gctx.dev.createSemaphore(&.{}, null);
@@ -312,8 +322,7 @@ const SwapImage = struct {
     }
 
     fn deinit(self: SwapImage, gctx: *const GraphicsContext) void {
-        self.
-            waitForFence(gctx) catch return;
+        self.waitForFence(gctx) catch {};
         gctx.dev.destroyImageView(self.view, null);
         gctx.dev.destroySemaphore(self.image_acquired, null);
         gctx.dev.destroySemaphore(self.render_finished, null);

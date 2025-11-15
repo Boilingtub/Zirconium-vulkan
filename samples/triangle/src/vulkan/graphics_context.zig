@@ -1,13 +1,16 @@
 const std = @import("std");
 const vk = @import("vulkan");
-const glfw = @import("zglfw");
+const zwin = @import("zwin");
 
 const Allocator = std.mem.Allocator;
 
 const required_layer_names = [_][*:0]const u8{"VK_LAYER_KHRONOS_validation"};
 
 const required_device_extensions = 
-    [_][*:0]const u8{vk.extensions.khr_swapchain.name};
+    [_][*:0]const u8{
+        vk.extensions.khr_swapchain.name,
+        vk.extensions.khr_spirv_1_4.name
+    };
 
 /// There are 3 levels of bindings in vulkan-zig:
 /// - The Dispatch types (vk.BaseDispatch, vk.InstanceDispatch,
@@ -54,10 +57,17 @@ pub const GraphicsContext = struct {
     present_queue: Queue,
 
     pub fn init(allocator: Allocator, app_name: [*:0]const u8,
-        window: *glfw.Window) !GraphicsContext {
+        window: *zwin.Window) !GraphicsContext {
+
+        if(!zwin.isVulkanSupported()) {
+            std.log.err("zwin reported that libvulkan is not supported!\n", .{});
+            return error.NoVulkan;
+        }
+        
         var self: GraphicsContext = undefined;
         self.allocator = allocator;
-        self.vkb = BaseWrapper.load(glfw.getInstanceProcAddress);
+        self.vkb = BaseWrapper.load(
+            @as(vk.PfnGetInstanceProcAddr,@ptrCast(zwin.zwinVkgetInstanceProcAddr)));
 
         if (try checkLayerSupport(&self.vkb, self.allocator) == false) {
             return error.MissingLayer;
@@ -78,12 +88,15 @@ pub const GraphicsContext = struct {
             vk.extensions.khr_get_physical_device_properties_2.name
         );
 
-        const glfw_exts = try glfw.getRequiredInstanceExtensions();
+        const zwin_exts = zwin.getRequiredInstanceExtensions();
         try extension_names.appendSlice(
             allocator, 
-            @ptrCast(glfw_exts[0..glfw_exts.len])
+            zwin_exts,
         );
-        
+
+        for (extension_names.items) |e| {
+            std.debug.print("{s}\n", .{e});
+        }
 
         const instance = try self.vkb.createInstance(&.{
             .p_application_info = &.{
@@ -91,7 +104,7 @@ pub const GraphicsContext = struct {
                 .application_version = @bitCast(vk.makeApiVersion(0, 0, 0, 0)),
                 .p_engine_name = app_name,
                 .engine_version = @bitCast(vk.makeApiVersion(0, 0, 0, 0)),
-                .api_version = @bitCast(vk.API_VERSION_1_2),
+                .api_version = @bitCast(vk.API_VERSION_1_3),
             },
             .enabled_layer_count = required_layer_names.len,
             .pp_enabled_layer_names = @ptrCast(&required_layer_names),
@@ -109,6 +122,7 @@ pub const GraphicsContext = struct {
         self.instance = Instance.init(instance, vki);
         errdefer self.instance.destroyInstance(null);
 
+        
         self.debug_messenger = 
             try self.instance.createDebugUtilsMessengerEXT(&.{
                 .message_severity = .{
@@ -126,8 +140,17 @@ pub const GraphicsContext = struct {
                 .p_user_data = null,
             }, null);
 
-        self.surface = try createSurface(self.instance, window);
-        errdefer self.instance.destroySurfaceKHR(self.surface, null);
+        //self.surface = try createSurface(self.instance, window);
+        //errdefer self.instance.destroySurfaceKHR(self.surface, null);
+        const surface_createInfo: vk.WaylandSurfaceCreateInfoKHR = .{
+            .s_type = vk.StructureType.wayland_surface_create_info_khr,
+            .display = @ptrCast(window.WL.display),
+            .surface = @ptrCast(window.WL.surface),
+        };
+        self.surface = try self.instance.createWaylandSurfaceKHR(
+            &surface_createInfo,
+            null,
+        );    
 
         const candidate = try pickPhysicalDevice(
             self.instance, 
@@ -145,6 +168,7 @@ pub const GraphicsContext = struct {
             dev, 
             self.instance.wrapper.dispatch.vkGetDeviceProcAddr.?
         );
+         
         self.dev = Device.init(dev, vkd);
         errdefer self.dev.destroyDevice(null);
 
@@ -236,14 +260,15 @@ pub const Queue = struct {
     }
 };
 
-fn createSurface(instance: Instance, window: *glfw.Window) !vk.SurfaceKHR {
-    var surface: vk.SurfaceKHR = undefined;
-    glfw.createWindowSurface(
-        instance.handle, window, null, &surface
-    ) catch |err| {
-        std.log.err("Failed to create window surface: {}", .{err});
-        return err;
-    };
+fn createSurface(_: Instance, _: *zwin.Window) !vk.SurfaceKHR {
+    const surface: vk.SurfaceKHR = undefined;
+    //zwin.createWindowSurface(
+    //    instance.handle, window, null, &surface
+    //
+    //) catch |err| {
+    //    std.log.err("Failed to create window surface: {}", .{err});
+    //    return err;
+    //};
 
     return surface;
 }

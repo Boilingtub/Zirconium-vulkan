@@ -1,5 +1,5 @@
 const std = @import("std")  ;
-const glfw = @import("zglfw");
+const zwin = @import("zwin");
 //vulkan imports
 pub const vk = @import("vulkan");
 pub const GraphicsContext = @import("vk_graphics_context").GraphicsContext;
@@ -50,7 +50,7 @@ pub const vertices = [_]Vertex{
 };
 
 pub const State = struct {
-    gctx : GraphicsContext,
+    gctx : *GraphicsContext,
     extent : vk.Extent2D,
     swapchain: Swapchain,
     pipeline_layout: vk.PipelineLayout,
@@ -65,22 +65,27 @@ pub const State = struct {
 
     pub fn create_vulkan_state(
         allocator: std.mem.Allocator,
-        window : *glfw.Window,
+        window : *zwin.Window,
         app_name : [:0]const u8) !State {
 
         const extent = blk: {
-            var w: c_int = undefined;
-            var h: c_int = undefined;
-            glfw.getFramebufferSize(window, &w, &h);
+            const w = window.width;
+            const h = window.height;
             break :blk vk.Extent2D{.width = @intCast(w), .height = @intCast(h)};
         };
     
-        const gctx = try GraphicsContext.init(allocator, app_name.ptr, window);
-        errdefer gctx.deinit();
+        var gctx = try allocator.create(GraphicsContext);
+        errdefer allocator.destroy(gctx);
+        var gctx_var = try GraphicsContext.init(allocator, app_name.ptr, window);
+        errdefer gctx_var.deinit();
+        gctx.* = gctx_var;
+
+        //std.debug.print("✅ INITIAL GCTX ADDRESS: {}\n", .{gctx});
+        //std.debug.print("✅ INITIAL VkDevice HANDLE: {}\n", .{gctx.dev});
 
         std.log.debug("Using device: {s}", .{gctx.deviceName()});
 
-        const swapchain = try Swapchain.init(&gctx, allocator, extent);
+        const swapchain = try Swapchain.init(gctx, allocator, extent);
         errdefer swapchain.deinit();
 
         const pipeline_layout = try gctx.dev.createPipelineLayout(&.{
@@ -93,17 +98,17 @@ pub const State = struct {
         errdefer gctx.dev.destroyPipelineLayout(pipeline_layout, null);
 
 
-        const render_pass = try createRenderPass(&gctx, swapchain);
+        const render_pass = try createRenderPass(gctx, swapchain);
         errdefer gctx.dev.destroyRenderPass(render_pass,null);
 
         const pipeline = try createPipeline(
-            &gctx, pipeline_layout, render_pass, @ptrCast(&vert_spv), @ptrCast(&frag_spv)
+            gctx, pipeline_layout, render_pass, @ptrCast(&vert_spv), @ptrCast(&frag_spv)
         );
         errdefer gctx.dev.destroyPipeline(pipeline,null);
 
-        const framebuffers = try createFramebuffers(&gctx,
+        const framebuffers = try createFramebuffers(gctx,
             allocator, render_pass, swapchain);
-        errdefer destroyFramebuffers(&gctx,allocator, framebuffers);
+        errdefer destroyFramebuffers(gctx,allocator, framebuffers);
 
         const pool = try gctx.dev.createCommandPool(&.{
                 .queue_family_index = gctx.graphics_queue.family, 
@@ -124,10 +129,10 @@ pub const State = struct {
         
         try gctx.dev.bindBufferMemory(buffer, memory, 0);
 
-        try uploadVertices(&gctx, pool, buffer);
+        try uploadVertices(gctx, pool, buffer);
 
         const cmdbufs = try createCommandBuffers(
-            &gctx,
+            gctx,
             vertices.len,
             pool,
             allocator,
@@ -137,17 +142,11 @@ pub const State = struct {
             pipeline,
             framebuffers,
         );
-        errdefer destroyCommandBuffers(&gctx, pool, allocator, cmdbufs);
+        errdefer destroyCommandBuffers(gctx, pool, allocator, cmdbufs);
         
         const present_state: Swapchain.PresentState = .optimal;
 
-        if(glfw.isVulkanSupported()) {
-            std.log.err("GLFW could not find libvulkan", .{});
-            return error.NoVulkan;
-        }
-
-
-        return .{
+        return State{
             .gctx = gctx,
             .extent = extent,
             .swapchain = swapchain,
@@ -160,13 +159,15 @@ pub const State = struct {
             .memory = memory, 
             .cmdbufs = cmdbufs,
             .present_state = present_state,
-
         };
+
+        //state.swapchain.gctx = &state.gctx;
+        //return state;
     }
 
     pub fn destroy_vulkan_state(self: *State, allocator: Allocator) void {
 
-        
+        _ = self.gctx.dev.deviceWaitIdle() catch unreachable;
         self.gctx.dev.destroyRenderPass(self.render_pass, null);
 
         self.gctx.dev.destroyPipeline(self.pipeline, null);
@@ -174,8 +175,10 @@ pub const State = struct {
         self.gctx.dev.destroyPipelineLayout(self.pipeline_layout, null);
 
         destroyFramebuffers(
-            &self.gctx, allocator, self.framebuffers
+            self.gctx, allocator, self.framebuffers
         );
+
+        allocator.free(self.cmdbufs);
 
         self.gctx.dev.destroyCommandPool(self.pool, null);
 
@@ -183,11 +186,18 @@ pub const State = struct {
 
         self.gctx.dev.freeMemory(self.memory, null);
 
-        destroyCommandBuffers(
-            &self.gctx, self.pool, allocator, self.cmdbufs
-        );
+        self.swapchain.deinit();
+
+
+        //destroyCommandBuffers(
+        //    &self.gctx, self.pool, allocator, self.cmdbufs
+        //);
+        //
 
         self.gctx.dev.destroyDevice(null);
+
+        self.gctx.*.deinit();
+        allocator.destroy(self.gctx);
     }
 };
 

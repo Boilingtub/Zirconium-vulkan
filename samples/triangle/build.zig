@@ -10,6 +10,7 @@ pub fn build(b: *std.Build,
     const content_dir = "/content";
     const use_zig_shaders = b.option(bool, "zig-shader", "Use Zig shaders instead of GLSL") orelse false;
 
+    //create library
     const lib_mod = b.addModule("Zirconium", .{
         .root_source_file = b.path(src_path ++ "root.zig"),
         .target = target,
@@ -22,6 +23,20 @@ pub fn build(b: *std.Build,
         .name = "Zirconium",
         .root_module = lib_mod,
     });
+    //Create exe binary
+    const exe = b.addExecutable(.{
+        .name = "zirconium-demo",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path(src_path ++ "main.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .imports = &.{
+                .{ .name = "Zirconium", .module = lib_mod },
+            },
+        }),
+    });
+
     
     //Modules
     const gpu = b.addModule("gpu", .{
@@ -86,10 +101,40 @@ pub fn build(b: *std.Build,
     
 
     //Dependencies
+    var zwin = b.createModule(.{});
+    //wayland linking 
+    if (target.result.os.tag == .linux) {
+        const Scanner = @import("zig_wayland").Scanner;
+        const scanner = Scanner.create(b, .{});
+        const wayland = b.createModule(.{.root_source_file = scanner.result});
+        scanner.addSystemProtocol("stable/xdg-shell/xdg-shell.xml");
+        // Pass the maximum version implemented by your wayland server or client.
+        // Requests, events, enums, etc. from newer versions will not be generated,
+        // ensuring forwards compatibility with newer protocol xml.
+        // This will also generate code for interfaces created using the provided
+        // global interface, in this example wl_keyboard, wl_pointer, xdg_surface,
+        // xdg_toplevel, etc. would be generated as well.
+        scanner.generate("wl_compositor",1);
+        scanner.generate("wl_shm", 2);
+        scanner.generate("xdg_wm_base", 3);
+        scanner.generate("wl_seat",4);
+        lib_mod.addImport("zig_wayland", wayland);
+        lib.linkLibC();
+        lib.linkSystemLibrary("wayland-client");
+
+        zwin.root_source_file = b.path(src_path ++ "os/wayland-zwin.zig");
+        zwin.addImport("wayland", wayland);
+    }
+    lib_mod.addImport("zwin", zwin);
+    gpu.addImport("zwin", zwin);
+    vk_graphics_context.addImport("zwin", zwin);
+    
+
     const vulkan_headers = b.dependency("vulkan_headers",.{});
     const vulkan = b.dependency("vulkan_zig", .{
         .registry = vulkan_headers.path("registry/vk.xml"),
     }).module("vulkan-zig");
+    zwin.addImport("vulkan", vulkan);
     gpu.addImport("vulkan", vulkan);
     lib_mod.addImport("vulkan", vulkan);
     vk_graphics_context.addImport("vulkan", vulkan);
@@ -99,67 +144,44 @@ pub fn build(b: *std.Build,
     vk_frame_buffer.addImport("vulkan", vulkan);
     vk_command_buffer.addImport("vulkan", vulkan);    
 
-    const zglfw = b.dependency("zglfw", .{
-        .target = target,
-        .optimize = optimize,
-        .import_vulkan = true,
-    });
-    zglfw.module("root").addImport("vulkan", vulkan);
-    lib_mod.addImport("zglfw", zglfw.module("root"));
-    gpu.addImport("zglfw", zglfw.module("root"));
-    vk_graphics_context.addImport("zglfw", zglfw.module("root"));
-
-    const zmath = b.dependency("zmath", .{
-        .target = target,
-    });
-    lib_mod.addImport("zmath", zmath.module("root"));
-   
-    const zgltf = b.dependency("zgltf", .{
-        .target =  target,
-        .optimize = optimize,
-    });
-    lib_mod.addImport("zgltf", zgltf.module("zgltf"));
-   
-    const zstbi = b.dependency("zstbi", .{});
-    lib_mod.addImport("zstbi", zstbi.module("root"));
-   
-    const TrueType = b.dependency("TrueType", .{
-        .target = target,
-        .optimize = optimize,
-    });
-    lib_mod.addImport("TrueType", TrueType.module("TrueType"));
-
+//  const zglfw = b.dependency("zglfw", .{
+//      .target = target,
+//      .optimize = optimize,
+//      .import_vulkan = true,
+//  });
+//  if (target.result.os.tag == .linux) {
+//      zglfw.module("root").addLibraryPath(
+//          std.Build.LazyPath{.cwd_relative = "/usr/lib"}
+//      );
+//  }
+//  zglfw.module("root").addImport("vulkan", vulkan);
+//  lib_mod.addImport("zglfw", zglfw.module("root"));
+//  gpu.addImport("zglfw", zglfw.module("root"));
+//  vk_graphics_context.addImport("zglfw", zglfw.module("root"));
+//
+//  const zmath = b.dependency("zmath", .{
+//      .target = target,
+//  });
+//  lib_mod.addImport("zmath", zmath.module("root"));
+// 
+//  const zgltf = b.dependency("zgltf", .{
+//      .target =  target,
+//      .optimize = optimize,
+//  });
+//  lib_mod.addImport("zgltf", zgltf.module("zgltf"));
+// 
+//  const zstbi = b.dependency("zstbi", .{});
+//  lib_mod.addImport("zstbi", zstbi.module("root"));
+// 
+//  const TrueType = b.dependency("TrueType", .{
+//      .target = target,
+//      .optimize = optimize,
+//  });
+//  lib_mod.addImport("TrueType", TrueType.module("TrueType"));
+//
     //Link Generated / System Libraries
-    lib.root_module.linkLibrary(zglfw.artifact("glfw")); 
-    //lib.addLibraryPath(.{ .cwd_relative = "/usr/lib"});
-    //lib.linkLibrary(zglfw.artifact("glfw"));
-    //lib.linkSystemLibrary("vulkan");
-    //lib.linkLibC();
-
-    //Create exe binary
-    const exe = b.addExecutable(.{
-        .name = "zirconium-demo",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path(src_path ++ "main.zig"),
-            .target = target,
-            .optimize = optimize,
-            .link_libc = true,
-            .imports = &.{
-                .{ .name = "Zirconium", .module = lib_mod },
-            },
-        }),
-    });
-    exe.linkSystemLibrary("vulkan");
-    //exe.addLibraryPath(.{ .cwd_relative = "/usr/lib" });
-    //exe.addRPath(.{ .cwd_relative = "/usr/lib" });
-    //zglfw.module("root").addRPath(.{ .cwd_relative = "/usr/lib/" });
-
-    //exe.root_module.linkSystemLibrary("vulkan",.{});
-    //exe.linkSystemLibrary2("vulkan", .{ .needed = true, .weak = false});
-    //exe.linkLibrary(lib);
-    //exe.root_module.linkLibrary(zglfw.artifact("glfw"));
-    //exe.linkLibrary(zglfw.artifact("glfw"));
-    //exe.linkSystemLibrary("dl");
+//  lib.root_module.linkLibrary(zglfw.artifact("glfw")); 
+//
 
     //copy content_dir to output
     const content_path = b.pathJoin(&.{cwd_path, content_dir});

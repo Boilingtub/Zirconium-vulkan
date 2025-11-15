@@ -1,6 +1,6 @@
 const std = @import("std");
 const Zr = @import("Zirconium");
-const glfw = Zr.glfw;
+const zwin = Zr.zwin;
 
 const app_name : [:0]const u8 = "Zirconium-Demo : 0.0.1 : triangle";
 const wwidth = 1280;
@@ -13,27 +13,15 @@ pub fn main() !void {
     defer _ = gpa.deinit(); 
     const allocator = gpa.allocator();
     
-    glfw.init() catch {
-            std.debug.print("Error! failed to initialize zglfw for windowing!\n\n", .{});
+    zwin.init();
+    var window = zwin.Window.create(allocator, wwidth, wheight, app_name) catch {
+            std.debug.print("Error! Could not create zwin window!\n\n", .{});
             unreachable;
-        };
-    glfw.windowHint(.client_api, .no_api);
-
-    defer glfw.terminate();
-
-    const window = glfw.Window.create(wwidth, wheight, app_name, null) catch {
-            std.debug.print("Error! Could not create zglfw window!\n\n", .{});
-            unreachable;
-        };
-
-    defer window.destroy();
-    try window.setInputMode(
-        glfw.InputMode.cursor,
-        glfw.InputMode.cursor.ValueType().disabled
-    );
+    };
+    defer window.destroy(allocator);
      
     var state = try Zr.gpu.State.create_vulkan_state(
-        allocator, 
+        allocator,                          
         window,
         app_name,
     );
@@ -43,18 +31,18 @@ pub fn main() !void {
         
     //Input Loop
     var frame_count: u32 = 0;
-    while (!window.shouldClose() and window.getKey(.escape) != .press) {
-        var w: c_int = undefined;
-        var h: c_int = undefined;
-        glfw.getFramebufferSize(window, &w, &h);
-        if (w == 0 or h == 0) {
-            glfw.pollEvents();
+    while (window.running) {
+        //std.debug.print("attempting fame render : {d}\n", .{frame_count});
+        frame_count += 1;
+        if(window.width == 0 or window.height == 0) {
+            std.debug.print("invalid surface dimension : w={},h={} skipping...\n", .{
+                window.width,window.height
+            });
+            try window.pollEvents();
             continue;
         }
-        std.debug.print("attempting fame render : {d}\n", .{frame_count});
-        frame_count += 1;
-        try Zr.render(allocator, &state, w, h);
-        //state.draw_render();
+        try window.pollEvents();
+        try Zr.render(allocator, &state, window);
     }
     
     try state.swapchain.waitForAllFences();
