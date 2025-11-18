@@ -6,7 +6,7 @@ const app_name : [:0]const u8 = "Zirconium-Demo : 0.0.1 : triangle";
 const wwidth = 1280;
 const wheight = 720;
 
-pub fn main() !void {
+pub fn main() !void {   
     try Zr.print("Zirconium Startup...\n");
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -14,15 +14,16 @@ pub fn main() !void {
     const allocator = gpa.allocator();
     
     zwin.init();
-    var window = zwin.Window.create(allocator, wwidth, wheight, app_name) catch {
+    var window: zwin.Window = zwin.Window.empty();
+    window.init(wwidth, wheight, app_name) catch {
             std.debug.print("Error! Could not create zwin window!\n\n", .{});
             unreachable;
     };
-    defer window.destroy(allocator);
+    defer window.destroy();
      
     var state = try Zr.gpu.State.create_vulkan_state(
         allocator,                          
-        window,
+        &window,
         app_name,
     );
     defer state.destroy_vulkan_state(allocator);
@@ -42,7 +43,7 @@ pub fn main() !void {
             continue;
         }
         try window.pollEvents();
-        try Zr.render(allocator, &state, window);
+        try Zr.render(allocator, &state, &window);
     }
     
     try state.swapchain.waitForAllFences();

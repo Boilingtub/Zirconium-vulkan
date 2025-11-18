@@ -1,6 +1,5 @@
 const std = @import("std");
 const mem = std.mem;
-const Allocator = std.mem.Allocator;
 const posix = std.posix;
 
 const wayland = @import("wayland");
@@ -49,16 +48,34 @@ pub const Window = struct {
         xdg_toplevel: *xdg.Toplevel,
     },
 
-    pub fn create(allocator: Allocator, width:u16, height:u16, title:[*:0]const u8) !*Window {
-        var window = try allocator.create(Window);
+    pub fn empty() Window {
+        const window : Window = .{
+            .running = false,
+            .title = "",
+            .width = 0,
+            .height = 0,
+            .needs_resize = false,
+            .WL = .{
+                .context = Context{.wm_base = null, .compositor = null},
+                .display = undefined,
+                .registry = undefined,
+                .surface = undefined,
+                .xdg_surface = undefined,
+                .xdg_toplevel = undefined,
+            }
+        };
+        return window;
+    }
+
+    pub fn init(window: *Window, width:u16, height:u16, title:[*:0]const u8) !void {
         window.WL.display = try wl.Display.connect(null);
         const registry = try window.WL.display.getRegistry();
-        window.*.running = true;
-        window.*.title = title;
-        window.*.width = width;
-        window.*.height = height;
-        window.*.needs_resize = false;
-        window.*.WL.context = Context{.wm_base = null, .compositor = null};
+        window.running = true;
+        window.title = title;
+        window.width = width;
+        window.height = height;
+        window.needs_resize = false;
+        window.WL.context = Context{.wm_base = null, .compositor = null};
 
         registry.setListener(*Context, registryListener, &window.WL.context);
         if (window.WL.display.roundtrip() != .SUCCESS) return error.RoundtripFailed;
@@ -85,11 +102,10 @@ pub const Window = struct {
             timeout_count += 1;
         }
 
-        std.debug.print("window created successfully !\n", .{});
-        return window;
+        std.debug.print("window {s} initialized successfully !\n", .{title});
     }   
 
-    pub fn destroy(self: *Window, allocator: Allocator) void {
+    pub fn destroy(self: *Window) void {
         self.WL.xdg_toplevel.destroy();
         self.WL.xdg_surface.destroy();
         self.WL.surface.destroy();
@@ -101,7 +117,6 @@ pub const Window = struct {
         }
         self.WL.registry.destroy();
         self.WL.display.disconnect();
-        allocator.destroy(self);
     }
 
     pub fn Dispatch(self: *Window) !void {
