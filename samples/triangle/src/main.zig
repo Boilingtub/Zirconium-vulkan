@@ -21,6 +21,7 @@ pub fn main() !void {
     };
     defer window.destroy();
      
+    std.debug.print("Creating Vulkan State", .{});
     var state = try Zr.gpu.State.create_vulkan_state(
         allocator,                          
         &window,

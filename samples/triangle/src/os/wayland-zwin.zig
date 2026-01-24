@@ -31,6 +31,7 @@ pub fn init() void {
 const Context = struct {
     compositor: ?*wayland.client.wl.Compositor,
     wm_base: ?*wayland.client.xdg.WmBase,
+    seat: ?*wayland.client.wl.Seat,
 };
 
 pub const Window = struct {
@@ -46,6 +47,8 @@ pub const Window = struct {
         surface: *wl.Surface,
         xdg_surface: *xdg.Surface,
         xdg_toplevel: *xdg.Toplevel,
+        pointer: ?*wl.Pointer,
+        keyboard: ?*wl.Keyboard,
     },
 
     pub fn empty() Window {
@@ -56,12 +59,18 @@ pub const Window = struct {
             .height = 0,
             .needs_resize = false,
             .WL = .{
-                .context = Context{.wm_base = null, .compositor = null},
+                .context = Context{
+                    .wm_base = null,
+                    .compositor = null, 
+                    .seat = null
+                },
                 .display = undefined,
                 .registry = undefined,
                 .surface = undefined,
                 .xdg_surface = undefined,
                 .xdg_toplevel = undefined,
+                .pointer = null,
+                .keyboard = null,
             }
         };
         return window;
@@ -75,7 +84,7 @@ pub const Window = struct {
         window.width = width;
         window.height = height;
         window.needs_resize = false;
-        window.WL.context = Context{.wm_base = null, .compositor = null};
+        //window.WL.context = Context{.wm_base = null, .compositor = null, .seat = null};
 
         registry.setListener(*Context, registryListener, &window.WL.context);
         if (window.WL.display.roundtrip() != .SUCCESS) return error.RoundtripFailed;
@@ -90,7 +99,7 @@ pub const Window = struct {
         window.WL.xdg_toplevel.setListener(*Window, xdgToplevelListener, window);
         window.WL.xdg_toplevel.setAppId(title);
         window.WL.xdg_toplevel.setTitle(title);
-
+        window.WL.context.seat.?.setListener(*Window, seatListener, window);
 
         window.WL.surface.commit();
 
@@ -142,6 +151,9 @@ fn registryListener(registry: *wl.Registry, event: wl.Registry.Event, context: *
             } else 
             if (mem.orderZ(u8, global.interface, xdg.WmBase.interface.name) == .eq) {
                 context.wm_base = registry.bind(global.name, xdg.WmBase, 1) catch return;
+            } else 
+            if (mem.orderZ(u8, global.interface, wl.Seat.interface.name) == .eq) {
+                context.seat = registry.bind(global.name, wl.Seat, 1) catch return;
             }
         },
         .global_remove => |global_remove| {
@@ -151,7 +163,11 @@ fn registryListener(registry: *wl.Registry, event: wl.Registry.Event, context: *
             } else if (context.wm_base != null and
                 context.wm_base.?.getId() == global_remove.name) {
                 context.wm_base = null;
+            } else if (context.seat != null and
+                context.seat.?.getId() == global_remove.name) {
+                context.seat = null;
             }
+
         },
     }
 }
@@ -184,6 +200,44 @@ fn xdgToplevelListener(_: *xdg.Toplevel, event: xdg.Toplevel.Event, window: *Win
         },   
         .close => window.running = false,
     }
+}
+
+fn seatListener(_: *wl.Seat, event: wl.Seat.Event, window: *Window) void {
+    switch (event) {
+        .capabilities => |data| {
+            std.debug.print("Seat capabilities\n Pointer={}\n Keyboard={}\n Touch={}\n", .{
+                data.capabilities.pointer,
+                data.capabilities.keyboard,
+                data.capabilities.touch,
+            });
+            if (data.capabilities.pointer) {
+                if (window.WL.pointer == null) {
+                    window.WL.pointer = window.WL.context.seat.?.getPointer() catch return;
+                    window.WL.pointer.?.setListener(*Window, pointerListener, window);
+                }
+            } else if (window.WL.pointer) |ptr| {
+                ptr.release();
+            }
+            if (data.capabilities.keyboard) {
+                if (window.WL.keyboard == null) {
+                    window.WL.keyboard = window.WL.context.seat.?.getKeyboard() catch return;
+                    window.WL.keyboard.?.setListener(*Window, keyboardListener, window);
+                }
+            } else if (window.WL.keyboard) |kbd| {
+                kbd.release();
+            }
+            window.running = true;
+        },
+        .name => {},
+    }
+}
+
+fn pointerListener(_: *wl.Pointer, event: wl.Pointer.Event, _: *Window) void {
+    std.debug.print("ptr:ptr:{}\n", .{event});
+}
+
+fn keyboardListener(_: *wl.Keyboard, event: wl.Keyboard.Event, _: *Window) void {
+    std.debug.print("kbd:kbd:{}\n", .{event});
 }
 
 pub fn isVulkanSupported() bool {
