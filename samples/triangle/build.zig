@@ -104,9 +104,15 @@ pub fn build(b: *std.Build,
     var zwin = b.createModule(.{});
     //wayland linking 
     if (target.result.os.tag == .linux) {
-        const Scanner = @import("zig_wayland").Scanner;
-        const scanner = Scanner.create(b, .{});
-        const wayland = b.createModule(.{.root_source_file = scanner.result});
+        //const wayland_devel = b.dependency("wayland_devel", .{});
+        //const wayland_xml = wayland_devel.path("protocol/wayland.xml");
+        //const protocol_dep = b.dependency("wayland_protocols", .{});
+        //const xdg_shell_path = protocol_dep.path("stable/xdg-shell/xdg-shell.xml");
+        //lib.addIncludePath(wayland_devel.path("src"));
+        const Scanner = @import("wayland").Scanner;
+        const scanner = Scanner.create(b, .{
+        //    .wayland_xml = wayland_xml,
+        });
         scanner.addSystemProtocol("stable/xdg-shell/xdg-shell.xml");
         // Pass the maximum version implemented by your wayland server or client.
         // Requests, events, enums, etc. from newer versions will not be generated,
@@ -118,7 +124,10 @@ pub fn build(b: *std.Build,
         scanner.generate("wl_shm", 2);
         scanner.generate("xdg_wm_base", 3);
         scanner.generate("wl_seat",4);
-        lib_mod.addImport("zig_wayland", wayland);
+
+        const wayland = b.createModule(.{.root_source_file = scanner.result});
+        lib_mod.addImport("wayland", wayland);
+
         lib.linkLibC();
         lib.linkSystemLibrary("wayland-client");
 
