@@ -1,1 +1,1 @@
-sudo xbps-install libX11-devel vulkan-loader-devel Vulkan-ValidationLayers wayland-devel wayland-protocols 
+sudo xbps-install libX11-devel vulkan-loader-devel Vulkan-ValidationLayers wayland-devel wayland-protocols xkbcommon-devel 
