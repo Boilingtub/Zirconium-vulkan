@@ -128,7 +128,6 @@ pub fn build(b: *std.Build,
         const wayland = b.createModule(.{.root_source_file = scanner.result});
         lib_mod.addImport("wayland", wayland);
 
-        lib.linkLibC();
         lib.linkSystemLibrary("wayland-client");
 
         zwin.root_source_file = b.path(src_path ++ "os/wayland-zwin.zig");
