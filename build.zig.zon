@@ -4,27 +4,26 @@
     .fingerprint = 0xdd90d875d9fb465c,
     .minimum_zig_version = "0.15.2",
     .dependencies = .{
-//      .wayland_devel = .{
-//           .url = "https://gitlab.freedesktop.org/wayland/wayland/-/releases/1.24.0/downloads/wayland-1.24.0.tar.xz",
-//           .hash = "N-V-__8AAGoeGQBEn6KguTJUXrCE0tIRrrXfQX7hYHoKCJwZ",
-//       },
-//       .wayland_protocols = .{
-//           .url = "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/1.45/downloads/wayland-protocols-1.45.tar.xz",
-//           .hash = "N-V-__8AAIKCDgBX6hRMzFmvC-WAwrOH_ewvZgAzPGbBvavk",
-//       },
+        //      .wayland_devel = .{
+        //           .url = "https://gitlab.freedesktop.org/wayland/wayland/-/releases/1.24.0/downloads/wayland-1.24.0.tar.xz",
+        //           .hash = "N-V-__8AAGoeGQBEn6KguTJUXrCE0tIRrrXfQX7hYHoKCJwZ",
+        //       },
+        //       .wayland_protocols = .{
+        //           .url = "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/1.45/downloads/wayland-protocols-1.45.tar.xz",
+        //           .hash = "N-V-__8AAIKCDgBX6hRMzFmvC-WAwrOH_ewvZgAzPGbBvavk",
+        //       },
         .wayland = .{
-            .url = "https://github.com/ifreund/zig-wayland/archive/e57368ecbda85d564362779b253b744260a4b053.tar.gz",
-            .hash = "wayland-0.5.0-dev-lQa1kv_ZAQCZfnVZMocokZ78QJbH6NaM5RUC9ODQPhx5",
+            .url = "git+https://github.com/ifreund/zig-wayland.git#4a150a04f76f7329e80280661355c04328369d1f",
+            .hash = "wayland-0.6.0-dev-lQa1krD8AQBlMqwuhAMJjPQKXvpRByZBxxqMVAZ7yzbG",
         },
         .vulkan_headers = .{
             .url = "https://github.com/KhronosGroup/Vulkan-Headers/archive/v1.3.283.tar.gz",
             .hash = "N-V-__8AAAkkoQGn5z1yoNVrwqZfnYmZp8AZ5CJgoHRMQI0c",
         },
-        .vulkan_zig = .{
-            .url = "https://github.com/Snektron/vulkan-zig/archive/f879074293f0e2f718c93fd19cc0a96260a3aa52.tar.gz",
-            .hash = "vulkan-0.0.0-r7Ytx6hBAwBUnt0XA-uOkR2hda4fAHFhQITNTgJpnFkY",
+        .vulkan = .{
+            .url = "git+https://github.com/Snektron/vulkan-zig.git#6d77ac2a9b25c8940d493b2f7739c639c4842482",
+            .hash = "vulkan-0.0.0-r7Ytx7l9AwCsebml5bToJyyr67VASs0-7UszmWKVXNb7",
         },
-
         //      .zmath = .{
         //          .url = "https://github.com/zig-gamedev/zmath/archive/3a5955b2b72cd081563fbb084eff05bffd1e3fbb.tar.gz",
         //          .hash = "zmath-0.11.0-dev-wjwivdMsAwD-xaLj76YHUq3t9JDH-X16xuMTmnDzqbu2",
